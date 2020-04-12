@@ -1,16 +1,20 @@
+import { useState } from 'react'; // eslint-disable-line  no-restricted-imports
 import PropTypes from 'prop-types';
 import Content from 'components/Content/Content';
 import Head from 'components/head';
 import HeroBanner from 'components/HeroBanner/HeroBanner';
 import ResourceCard from 'components/Cards/ResourceCard/ResourceCard';
 import Pagination from 'components/Pagination/Pagination';
-import { getResourcesPromise } from 'common/constants/api';
+import { Field, Formik } from 'formik';
+import Form from 'components/Form/Form';
+import Input from 'components/Form/Input/Input';
+import { getResourcesPromise, searchResourcesPromise } from 'common/constants/api';
 import styles from '../styles/resources.module.css';
 
 ResourcesPage.propTypes = {
   currentPage: PropTypes.number.isRequired,
   pathname: PropTypes.string.isRequired,
-  resources: PropTypes.arrayOf(
+  defaultResources: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.number, // integer, unique ID
       name: PropTypes.title,
@@ -20,7 +24,7 @@ ResourcesPage.propTypes = {
       downvotes: PropTypes.number,
     }),
   ).isRequired,
-  totalPages: PropTypes.number.isRequired,
+  defaultTotalPages: PropTypes.number.isRequired,
 };
 
 ResourcesPage.getInitialProps = async ({ pathname, query }) => {
@@ -28,17 +32,32 @@ ResourcesPage.getInitialProps = async ({ pathname, query }) => {
 
   const response = await getResourcesPromise({ page });
 
-  const { data: resources, number_of_pages: totalPages, page: currentPage } = response.data;
+  const { data: defaultResources, number_of_pages: defaultTotalPages, page: currentPage } = response.data;
 
   return {
     currentPage,
     pathname,
-    resources,
-    totalPages,
+    defaultResources,
+    defaultTotalPages,
+    page
   };
 };
 
-function ResourcesPage({ currentPage, pathname, resources, totalPages }) {
+function ResourcesPage({ currentPage, pathname, defaultResources, defaultTotalPages, page }) {
+  const [resources, setResources] = useState(defaultResources);
+  const [totalPages, setTotalPages] = useState(defaultTotalPages);
+  // const [pathname, setPathname] = useState(pathname);
+
+  const handleSearch = async (q) => {
+    const params = {page: page};
+    params.q = q.q;
+    const response = await searchResourcesPromise(params);
+    setResources(response.data.data);
+    setTotalPages(response.data.number_of_pages);
+    // setPathname(`${pathname}?q=${q.q}`);
+    // pathname = `${pathname}?q=${q.q}`;
+  };
+
   return (
     <>
       <Head title="Resources" />
@@ -46,6 +65,20 @@ function ResourcesPage({ currentPage, pathname, resources, totalPages }) {
       <Content
         theme="white"
         columns={[
+          <Formik
+            onSubmit={handleSearch}
+          >
+            <Form>
+              <div className={styles.fullWidth}>
+                <Field
+                  type="search"
+                  name="q"
+                  label="Search"
+                  component={Input}
+                />
+              </div>
+            </Form>
+          </Formik>,
           <section className={styles.fullWidth}>
             <div className={styles.fullWidth}>
               {resources.map(resource => (
